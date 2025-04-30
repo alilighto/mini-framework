@@ -3,18 +3,30 @@
  * Provides custom event handling with delegation
  */
 
-// Event delegation system
-class EventSystem {
-  constructor() {
-    this.events = {}
-    this.delegatedEvents = new Set()
+// Create an event system
+export function createEventSystem() {
+  const events = {}
+  const delegatedEvents = new Set()
 
-    // Bind methods
-    this.handleEvent = this.handleEvent.bind(this)
+  // Handle delegated events
+  function handleEvent(e) {
+    const eventName = e.type
+
+    // Find all matching delegated handlers
+    Object.entries(events)
+      .filter(([_, event]) => event.eventName === eventName && event.selector && e.target.matches(event.selector))
+      .forEach(([_, event]) => {
+        event.callback.call(e.target, e)
+      })
+  }
+
+  // Generate a unique ID
+  function generateId() {
+    return "_" + Math.random().toString(36).substr(2, 9)
   }
 
   // Add an event listener with optional delegation
-  on(element, eventName, selector, callback) {
+  function on(element, eventName, selector, callback) {
     // Handle case where selector is omitted (no delegation)
     if (typeof selector === "function") {
       callback = selector
@@ -22,10 +34,10 @@ class EventSystem {
     }
 
     // Create unique ID for this listener
-    const id = this.generateId()
+    const id = generateId()
 
     // Store the event info
-    this.events[id] = {
+    events[id] = {
       element,
       eventName,
       selector,
@@ -34,9 +46,9 @@ class EventSystem {
 
     // Set up delegation if needed
     if (selector) {
-      if (!this.delegatedEvents.has(eventName)) {
-        document.addEventListener(eventName, this.handleEvent, true)
-        this.delegatedEvents.add(eventName)
+      if (!delegatedEvents.has(eventName)) {
+        document.addEventListener(eventName, handleEvent, true)
+        delegatedEvents.add(eventName)
       }
     } else {
       // Direct event binding
@@ -48,42 +60,30 @@ class EventSystem {
   }
 
   // Remove an event listener
-  off(id) {
-    const event = this.events[id]
+  function off(id) {
+    const event = events[id]
     if (!event) return false
 
     if (event.selector) {
       // For delegated events, just remove from our registry
-      delete this.events[id]
+      delete events[id]
     } else {
       // For direct events, remove the actual listener
       event.element.removeEventListener(event.eventName, event.callback)
-      delete this.events[id]
+      delete events[id]
     }
 
     return true
   }
 
-  // Handle delegated events
-  handleEvent(e) {
-    const eventName = e.type
-
-    // Find all matching delegated handlers
-    Object.entries(this.events)
-      .filter(([_, event]) => event.eventName === eventName && event.selector && e.target.matches(event.selector))
-      .forEach(([_, event]) => {
-        event.callback.call(e.target, e)
-      })
-  }
-
-  // Generate a unique ID
-  generateId() {
-    return "_" + Math.random().toString(36).substr(2, 9)
+  return {
+    on,
+    off,
   }
 }
 
-// Create and export a singleton event system
-export const eventSystem = new EventSystem()
+// Create a singleton event system
+export const eventSystem = createEventSystem()
 
 // Helper functions
 export function on(element, event, selector, callback) {
@@ -94,48 +94,57 @@ export function off(id) {
   return eventSystem.off(id)
 }
 
-// Custom event emitter
-export class EventEmitter {
-  constructor() {
-    this.events = {}
-  }
+// Create an event emitter
+export function createEventEmitter() {
+  const events = {}
 
   // Add event listener
-  on(event, listener) {
-    if (!this.events[event]) {
-      this.events[event] = []
+  function on(event, listener) {
+    if (!events[event]) {
+      events[event] = []
     }
 
-    this.events[event].push(listener)
-    return this
+    events[event].push(listener)
+    return () => off(event, listener)
   }
 
   // Remove event listener
-  off(event, listener) {
-    if (!this.events[event]) return this
+  function off(event, listener) {
+    if (!events[event]) return false
 
-    this.events[event] = this.events[event].filter((l) => l !== listener)
-    return this
+    const index = events[event].indexOf(listener)
+    if (index !== -1) {
+      events[event].splice(index, 1)
+      return true
+    }
+    return false
   }
 
   // Emit event with data
-  emit(event, ...args) {
-    if (!this.events[event]) return this
+  function emit(event, ...args) {
+    if (!events[event]) return false
 
-    this.events[event].forEach((listener) => {
+    events[event].forEach((listener) => {
       listener(...args)
     })
 
-    return this
+    return true
   }
 
   // Add one-time event listener
-  once(event, listener) {
-    const onceListener = (...args) => {
-      this.off(event, onceListener)
+  function once(event, listener) {
+    const onceWrapper = (...args) => {
+      off(event, onceWrapper)
       listener(...args)
     }
 
-    return this.on(event, onceListener)
+    return on(event, onceWrapper)
+  }
+
+  return {
+    on,
+    off,
+    emit,
+    once,
   }
 }

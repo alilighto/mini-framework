@@ -2,73 +2,56 @@
  * TodoMVC Item Component
  */
 
-import { Component, createElement as h } from "../../framework/index.js"
-import { TodoInput } from "./todo-input.js"
+import { createElement as h } from "../../framework/index.js"
+import { createTodoInput } from "./todo-input.js"
 
-export class TodoItem extends Component {
-  constructor(props) {
-    super(props)
+export function createTodoItem(props) {
+  const { todo, editing, onToggle, onDelete, onEdit, onUpdate, onCancel } = props
+  const isEditing = editing === todo.id
 
-    // Bind methods
-    this.handleToggle = this.handleToggle.bind(this)
-    this.handleDelete = this.handleDelete.bind(this)
-    this.handleEdit = this.handleEdit.bind(this)
-    this.handleSave = this.handleSave.bind(this)
-    this.handleCancel = this.handleCancel.bind(this)
+  function handleToggle() {
+    onToggle(todo.id)
   }
 
-  handleToggle() {
-    this.props.onToggle(this.props.todo.id)
+  function handleDelete() {
+    onDelete(todo.id)
   }
 
-  handleDelete() {
-    this.props.onDelete(this.props.todo.id)
+  function handleEdit() {
+    onEdit(todo.id)
   }
 
-  handleEdit() {
-    this.props.onEdit(this.props.todo.id)
+  function handleSave(text) {
+    onUpdate(todo.id, text)
   }
 
-  handleSave(text) {
-    this.props.onUpdate(this.props.todo.id, text)
-  }
-
-  handleCancel() {
-    this.props.onCancel()
-  }
-
-  render() {
-    const { todo, editing } = this.props
-    const isEditing = editing === todo.id
-
-    return h(
-      "li",
-      {
-        className: `${todo.completed ? "completed" : ""} ${isEditing ? "editing" : ""}`,
-      },
-      [
-        h("div", { className: "view" }, [
-          h("input", {
-            className: "toggle",
-            type: "checkbox",
-            checked: todo.completed,
-            onChange: this.handleToggle,
-          }),
-          h("label", { onDblClick: this.handleEdit }, todo.text),
-          h("button", {
-            className: "destroy",
-            onClick: this.handleDelete,
-          }),
-        ]),
-        isEditing
-          ? new TodoInput({
-              text: todo.text,
-              editing: true,
-              onSave: this.handleSave,
-              onCancel: this.handleCancel,
-            }).render()
-          : null,
-      ],
-    )
-  }
+  return h(
+    "li",
+    {
+      className: `${todo.completed ? "completed" : ""} ${isEditing ? "editing" : ""}`,
+    },
+    [
+      h("div", { className: "view" }, [
+        h("input", {
+          className: "toggle",
+          type: "checkbox",
+          checked: todo.completed,
+          onChange: handleToggle,
+        }),
+        h("label", { onDblClick: handleEdit }, todo.text),
+        h("button", {
+          className: "destroy",
+          onClick: handleDelete,
+        }),
+      ]),
+      isEditing
+        ? createTodoInput({
+          text: todo.text,
+          editing: true,
+          onSave: handleSave,
+          onCancel: onCancel,
+        })
+        : null,
+    ],
+  )
 }

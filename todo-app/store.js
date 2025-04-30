@@ -2,7 +2,7 @@
  * TodoMVC State Store
  */
 
-import { Store } from "../framework/index.js"
+import { createStore } from "../framework/index.js"
 
 // Initial state
 const initialState = {
@@ -11,7 +11,7 @@ const initialState = {
 }
 
 // Create the store
-export const store = new Store(initialState)
+export const store = createStore(initialState)
 
 // Actions
 export const actions = {

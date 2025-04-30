@@ -3,81 +3,86 @@
  * Provides centralized state management with subscriptions
  */
 
-export class Store {
-  constructor(initialState = {}) {
-    this.state = initialState
-    this.listeners = []
-  }
+// Create a store
+export function createStore(initialState = {}) {
+  let state = { ...initialState }
+  const listeners = []
 
   // Get the current state
-  getState() {
-    return this.state
+  function getState() {
+    return state
   }
 
   // Update the state
-  setState(newState) {
-    this.state = { ...this.state, ...newState }
-    this.notify()
+  function setState(newState) {
+    state = { ...state, ...newState }
+    notify()
+    return state
   }
 
   // Replace the entire state
-  replaceState(newState) {
-    this.state = newState
-    this.notify()
+  function replaceState(newState) {
+    state = newState
+    notify()
+    return state
   }
 
   // Subscribe to state changes
-  subscribe(listener) {
-    this.listeners.push(listener)
+  function subscribe(listener) {
+    listeners.push(listener)
 
     // Return unsubscribe function
     return () => {
-      this.listeners = this.listeners.filter((l) => l !== listener)
+      const index = listeners.indexOf(listener)
+      if (index !== -1) {
+        listeners.splice(index, 1)
+      }
     }
   }
 
   // Notify all listeners of state change
-  notify() {
-    this.listeners.forEach((listener) => listener(this.state))
+  function notify() {
+    listeners.forEach((listener) => listener(state))
   }
 
   // Create an action creator
-  createAction(actionFn) {
+  function createAction(actionFn) {
     return (...args) => {
       const result = actionFn(...args)
 
       if (typeof result === "function") {
         // Thunk action for async operations
-        return result(this.setState.bind(this), this.getState.bind(this))
+        return result(setState, getState)
       } else if (result !== undefined) {
         // Regular action
-        this.setState(result)
+        setState(result)
       }
+
+      return getState()
     }
+  }
+
+  return {
+    getState,
+    setState,
+    replaceState,
+    subscribe,
+    createAction,
   }
 }
 
-// Create a connected component that reacts to state changes
-export function connect(component, mapStateToProps) {
-  return function ConnectedComponent(store, ownProps = {}) {
+// Connect a component to the store
+export function connect(renderFn, mapStateToProps) {
+  return (store, props = {}) => {
     const render = () => {
       const stateProps = mapStateToProps ? mapStateToProps(store.getState()) : {}
-      const props = { ...ownProps, ...stateProps }
-
-      // If component is a class, instantiate it
-      if (typeof component === "function" && component.prototype && component.prototype.render) {
-        const instance = new component(props)
-        return instance.render()
-      }
-
-      // If component is a function, call it with props
-      return component(props)
+      const combinedProps = { ...props, ...stateProps }
+      return renderFn(combinedProps)
     }
 
     // Subscribe to store changes
     const unsubscribe = store.subscribe(() => {
-      // Re-render when state changes
-      // This will be handled by the framework's rendering system
+      // This will be handled by the component's update function
     })
 
     return {

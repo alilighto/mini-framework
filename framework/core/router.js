@@ -5,62 +5,31 @@
 
 import { render } from "./dom.js"
 
-class Router {
-  constructor() {
-    this.routes = []
-    this.currentRoute = null
-    this.rootElement = null
-
-    // Bind methods
-    this.navigate = this.navigate.bind(this)
-    this.handlePopState = this.handlePopState.bind(this)
-
-    // Set up event listeners
-    window.addEventListener("popstate", this.handlePopState)
-
-    // Initial route
-    this.handlePopState()
-  }
-
-  // Register a route
-  addRoute(path, component) {
-    this.routes.push({ path, component })
-    return this
-  }
-
-  // Set the root element where components will be rendered
-  setRoot(element) {
-    this.rootElement = element
-    this.render()
-    return this
-  }
-
-  // Navigate to a specific route
-  navigate(path) {
-    window.history.pushState(null, "", path)
-    this.handlePopState()
-    return this
-  }
+// Create a router
+export function createRouter() {
+  const routes = []
+  let currentRoute = null
+  let rootElement = null
 
   // Handle browser back/forward navigation
-  handlePopState() {
+  function handlePopState() {
     const path = window.location.pathname
-    const route = this.findRoute(path)
+    const route = findRoute(path)
 
     if (route) {
-      this.currentRoute = route
-      this.render()
+      currentRoute = route
+      renderRoute()
     }
   }
 
   // Find a matching route for a path
-  findRoute(path) {
+  function findRoute(path) {
     // First try exact match
-    const route = this.routes.find((r) => r.path === path)
+    const route = routes.find((r) => r.path === path)
 
     if (!route) {
       // Try to match routes with parameters
-      for (const r of this.routes) {
+      for (const r of routes) {
         const routeParts = r.path.split("/")
         const pathParts = path.split("/")
 
@@ -90,27 +59,57 @@ class Router {
   }
 
   // Render the current route
-  render() {
-    if (!this.rootElement || !this.currentRoute) return
+  function renderRoute() {
+    if (!rootElement || !currentRoute) return
 
-    const { component, params = {} } = this.currentRoute
+    const { component, params = {} } = currentRoute
 
-    // If component is a class, instantiate it with params
-    if (typeof component === "function" && component.prototype && component.prototype.render) {
-      const instance = new component(params)
-      render(instance.render(), this.rootElement)
-    } else if (typeof component === "function") {
-      // If component is a function, call it with params
-      render(component(params), this.rootElement)
+    // If component is a function, call it with params
+    if (typeof component === "function") {
+      render(component(params), rootElement)
     } else {
       // If component is a vNode, render it directly
-      render(component, this.rootElement)
+      render(component, rootElement)
     }
   }
+
+  // Register a route
+  function addRoute(path, component) {
+    routes.push({ path, component })
+    return router
+  }
+
+  // Set the root element where components will be rendered
+  function setRoot(element) {
+    rootElement = element
+    renderRoute()
+    return router
+  }
+
+  // Navigate to a specific route
+  function navigate(path) {
+    window.history.pushState(null, "", path)
+    handlePopState()
+    return router
+  }
+
+  // Initialize the router
+  window.addEventListener("popstate", handlePopState)
+  handlePopState()
+
+  // Router object
+  const router = {
+    addRoute,
+    setRoot,
+    navigate,
+    getRoutes: () => routes,
+  }
+
+  return router
 }
 
-// Create and export a singleton router instance
-export const router = new Router()
+// Create a singleton router instance
+export const router = createRouter()
 
 // Link component for navigation
 export function Link({ to, className, children }) {

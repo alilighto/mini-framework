@@ -2,28 +2,26 @@
  * TodoMVC List Component
  */
 
-import { Component, createElement as h } from "../../framework/index.js"
-import { TodoItem } from "./todo-item.js"
+import { createElement as h } from "../../framework/index.js"
+import { createTodoItem } from "./todo-item.js"
 
-export class TodoList extends Component {
-  render() {
-    const { todos, editing, onToggle, onDelete, onEdit, onUpdate, onCancel } = this.props
+export function createTodoList(props) {
+  const { todos, editing, onToggle, onDelete, onEdit, onUpdate, onCancel } = props
 
-    return h(
-      "ul",
-      { className: "todo-list" },
-      todos.map((todo) =>
-        new TodoItem({
-          key: todo.id,
-          todo,
-          editing,
-          onToggle,
-          onDelete,
-          onEdit,
-          onUpdate,
-          onCancel,
-        }).render(),
-      ),
-    )
-  }
+  return h(
+    "ul",
+    { className: "todo-list" },
+    todos.map((todo) =>
+      createTodoItem({
+        key: todo.id,
+        todo,
+        editing,
+        onToggle,
+        onDelete,
+        onEdit,
+        onUpdate,
+        onCancel,
+      }),
+    ),
+  )
 }

@@ -3,17 +3,17 @@
  */
 
 import { router } from "../framework/index.js"
-import { App } from "./components/app.js"
+import { createTodoApp } from "./components/app.js"
 import { store } from "./store.js"
-
-// Set up routes
-router
-  .addRoute("/", () => new App({ store, filter: "all" }))
-  .addRoute("/active", () => new App({ store, filter: "active" }))
-  .addRoute("/completed", () => new App({ store, filter: "completed" }))
-  .setRoot(document.getElementById("app"))
 
 // Initialize the app
 document.addEventListener("DOMContentLoaded", () => {
-  // Initial render happens through the router
+  const appRoot = document.getElementById("app")
+
+  // Set up routes
+  router
+    .addRoute("/", () => createTodoApp({ store, filter: "all" }))
+    .addRoute("/active", () => createTodoApp({ store, filter: "active" }))
+    .addRoute("/completed", () => createTodoApp({ store, filter: "completed" }))
+    .setRoot(appRoot)
 })

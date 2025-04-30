@@ -75,39 +75,50 @@ function createDomNode(vNode) {
   return element
 }
 
-// Component class for creating reusable components
-export class Component {
-  constructor(props = {}) {
-    this.props = props
-    this.state = {}
+// Create a component
+export function createComponent(renderFn, initialState = {}) {
+  let state = { ...initialState }
+  let updateFn = null
+
+  function setState(newState) {
+    state = { ...state, ...newState }
+    if (updateFn) {
+      updateFn()
+    }
   }
 
-  setState(newState) {
-    this.state = { ...this.state, ...newState }
-    this.update()
+  function getState() {
+    return state
   }
 
-  update() {
-    // This will be implemented when the component is mounted
+  function render(props = {}) {
+    return renderFn({ ...props, state, setState })
   }
 
-  render() {
-    // To be implemented by subclasses
-    throw new Error("Component subclass must implement render()")
+  function mount(container, props = {}) {
+    const vNode = render(props)
+    const domNode = render(vNode, container)
+
+    updateFn = () => {
+      const newVNode = render(props)
+      const newDomNode = render(newVNode, container)
+      domNode.replaceWith(newDomNode)
+    }
+
+    return {
+      update: updateFn,
+      unmount: () => {
+        while (container.firstChild) {
+          container.removeChild(container.firstChild)
+        }
+      },
+    }
   }
-}
 
-// Mount a component to a DOM element
-export function mount(component, container) {
-  const vNode = component.render()
-  const domNode = render(vNode, container)
-
-  // Set up update method
-  component.update = () => {
-    const newVNode = component.render()
-    const newDomNode = render(newVNode, container)
-    domNode.replaceWith(newDomNode)
+  return {
+    render,
+    mount,
+    setState,
+    getState,
   }
-
-  return domNode
 }

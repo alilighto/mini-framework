@@ -2,121 +2,125 @@
  * TodoMVC Main App Component
  */
 
-import { Component, createElement as h } from "../../framework/index.js"
-import { TodoInput } from "./todo-input.js"
-import { TodoList } from "./todo-list.js"
-import { TodoFooter } from "./todo-footer.js"
+import { createElement as h, render } from "../../framework/index.js"
+import { createTodoInput } from "./todo-input.js"
+import { createTodoList } from "./todo-list.js"
+import { createTodoFooter } from "./todo-footer.js"
 import { actions } from "../store.js"
 
-export class App extends Component {
-  constructor(props) {
-    super(props)
+export function createTodoApp(props) {
+  const { store, filter } = props
+  let editing = null
 
-    this.state = {
-      editing: null,
-    }
+  // Get current state
+  const state = store.getState()
+  const { todos } = state
 
-    // Bind methods
-    this.handleNewTodo = this.handleNewTodo.bind(this)
-    this.handleToggle = this.handleToggle.bind(this)
-    this.handleDelete = this.handleDelete.bind(this)
-    this.handleEdit = this.handleEdit.bind(this)
-    this.handleUpdate = this.handleUpdate.bind(this)
-    this.handleCancelEdit = this.handleCancelEdit.bind(this)
-    this.handleToggleAll = this.handleToggleAll.bind(this)
-    this.handleClearCompleted = this.handleClearCompleted.bind(this)
+  // Filter todos based on current filter
+  const filteredTodos = todos.filter((todo) => {
+    if (filter === "active") return !todo.completed
+    if (filter === "completed") return todo.completed
+    return true
+  })
 
-    // Subscribe to store changes
-    this.unsubscribe = this.props.store.subscribe(() => {
-      this.update()
-    })
-  }
+  const activeTodoCount = todos.filter((todo) => !todo.completed).length
+  const completedCount = todos.length - activeTodoCount
+  const allCompleted = todos.length > 0 && activeTodoCount === 0
 
-  handleNewTodo(text) {
+  // Event handlers
+  function handleNewTodo(text) {
     actions.addTodo(text)
   }
 
-  handleToggle(id) {
+  function handleToggle(id) {
     actions.toggleTodo(id)
   }
 
-  handleDelete(id) {
+  function handleDelete(id) {
     actions.deleteTodo(id)
   }
 
-  handleEdit(id) {
-    this.setState({ editing: id })
+  function handleEdit(id) {
+    editing = id
+    // Force re-render
+    store.subscribe(() => { })()
   }
 
-  handleUpdate(id, text) {
+  function handleUpdate(id, text) {
     actions.updateTodo(id, text)
-    this.setState({ editing: null })
+    editing = null
   }
 
-  handleCancelEdit() {
-    this.setState({ editing: null })
+  function handleCancelEdit() {
+    editing = null
+    // Force re-render
+    store.subscribe(() => { })()
   }
 
-  handleToggleAll(e) {
+  function handleToggleAll(e) {
     actions.toggleAll(e.target.checked)
   }
 
-  handleClearCompleted() {
+  function handleClearCompleted() {
     actions.clearCompleted()
   }
 
-  render() {
-    const { store, filter } = this.props
-    const { todos } = store.getState()
+  // Subscribe to store changes to update the UI
+  store.subscribe(() => {
+    render(createTodoApp(props), document.getElementById("app"))
+  })
 
-    // Filter todos based on current filter
-    const filteredTodos = todos.filter((todo) => {
-      if (filter === "active") return !todo.completed
-      if (filter === "completed") return todo.completed
-      return true
-    })
+  // Create the todo input component
+  const todoInput = createTodoInput({
+    onSave: handleNewTodo,
+  })
 
-    const activeTodoCount = todos.filter((todo) => !todo.completed).length
-    const completedCount = todos.length - activeTodoCount
-    const allCompleted = todos.length > 0 && activeTodoCount === 0
+  // Create the todo list component if we have todos
+  const todoList =
+    todos.length > 0
+      ? createTodoList({
+        todos: filteredTodos,
+        editing,
+        onToggle: handleToggle,
+        onDelete: handleDelete,
+        onEdit: handleEdit,
+        onUpdate: handleUpdate,
+        onCancel: handleCancelEdit,
+      })
+      : null
 
-    return h("div", { className: "todoapp" }, [
-      h("header", { className: "header" }, [
-        h("h1", {}, "todos"),
-        new TodoInput({ onSave: this.handleNewTodo }).render(),
-      ]),
+  // Create the footer component if we have todos
+  const todoFooter =
+    todos.length > 0
+      ? createTodoFooter({
+        count: activeTodoCount,
+        completedCount,
+        filter,
+        onClearCompleted: handleClearCompleted,
+      })
+      : null
 
-      todos.length > 0
-        ? [
-            h("section", { className: "main" }, [
-              h("input", {
-                id: "toggle-all",
-                className: "toggle-all",
-                type: "checkbox",
-                checked: allCompleted,
-                onChange: this.handleToggleAll,
-              }),
-              h("label", { htmlFor: "toggle-all" }, "Mark all as complete"),
+  // Create the toggle all checkbox if we have todos
+  const toggleAll =
+    todos.length > 0
+      ? [
+        h("input", {
+          id: "toggle-all",
+          className: "toggle-all",
+          type: "checkbox",
+          checked: allCompleted,
+          onChange: handleToggleAll,
+        }),
+        h("label", { htmlFor: "toggle-all" }, "Mark all as complete"),
+      ]
+      : null
 
-              new TodoList({
-                todos: filteredTodos,
-                editing: this.state.editing,
-                onToggle: this.handleToggle,
-                onDelete: this.handleDelete,
-                onEdit: this.handleEdit,
-                onUpdate: this.handleUpdate,
-                onCancel: this.handleCancelEdit,
-              }).render(),
-            ]),
+  // Render the app
+  return h("div", { className: "todoapp" }, [
+    h("header", { className: "header" }, [h("h1", {}, "todos"), todoInput]),
 
-            new TodoFooter({
-              count: activeTodoCount,
-              completedCount,
-              filter,
-              onClearCompleted: this.handleClearCompleted,
-            }).render(),
-          ]
-        : null,
-    ])
-  }
+    todos.length > 0 ? h("section", { className: "main" }, [...toggleAll, todoList]) : null,
+
+    todoFooter,
+  ])
 }
