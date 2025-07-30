@@ -1,3 +1,4 @@
+```
 mini-framework/
 ├── framework/
 │   ├── core/
@@ -22,3 +23,4 @@ mini-framework/
 │   └── store.js           # Todo app state
 └── docs/
     └── README.md          # Framework documentation
+```
